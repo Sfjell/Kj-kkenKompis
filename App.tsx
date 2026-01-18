@@ -19,7 +19,7 @@ import ScanningOverlay from './components/ScanningOverlay';
 import { identifyIngredientsFromImage, generateRecipes } from './services/geminiService';
 import { checkPaymentStatus, clearPaymentParams } from './services/stripeService';
 
-const FREE_LIMIT = 5;
+const DEFAULT_FREE_LIMIT = 5;
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>('onboarding');
@@ -27,6 +27,7 @@ const App: React.FC = () => {
   const [language, setLanguage] = useState<Language>('no');
   const [user, setUser] = useState<User | null>(null);
   const [usageCount, setUsageCount] = useState(0);
+  const [freeLimit, setFreeLimit] = useState(DEFAULT_FREE_LIMIT);
   const [detectedIngredients, setDetectedIngredients] = useState<string[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [favorites, setFavorites] = useState<Recipe[]>([]);
@@ -88,6 +89,7 @@ const App: React.FC = () => {
       setHistory(JSON.parse(localStorage.getItem(`${prefix}history`) || '[]'));
       setShoppingItems(JSON.parse(localStorage.getItem(`${prefix}shopping`) || '[]'));
       setUsageCount(parseInt(localStorage.getItem(`${prefix}usage`) || '0'));
+      setFreeLimit(parseInt(localStorage.getItem(`${prefix}limit`) || DEFAULT_FREE_LIMIT.toString()));
     } catch (e) {
       console.error("Error loading user data", e);
     }
@@ -105,13 +107,14 @@ const App: React.FC = () => {
         localStorage.setItem(`${prefix}history`, JSON.stringify(history));
         localStorage.setItem(`${prefix}shopping`, JSON.stringify(shoppingItems));
         localStorage.setItem(`${prefix}usage`, usageCount.toString());
+        localStorage.setItem(`${prefix}limit`, freeLimit.toString());
       } else {
         localStorage.removeItem('kk_active_user');
       }
     } catch (e) {
       console.warn("Storage update failed", e);
     }
-  }, [favorites, history, shoppingItems, user, usageCount, language, isLoading]);
+  }, [favorites, history, shoppingItems, user, usageCount, freeLimit, language, isLoading]);
 
   const handleLogin = (u: User) => {
     setUser(u);
@@ -126,6 +129,7 @@ const App: React.FC = () => {
     setHistory([]);
     setShoppingItems([]);
     setUsageCount(0);
+    setFreeLimit(DEFAULT_FREE_LIMIT);
     setView('login');
   };
 
@@ -138,9 +142,14 @@ const App: React.FC = () => {
     setView('home');
   };
 
+  const handleGrantBonus = () => {
+    setFreeLimit(prev => prev + 5);
+    setView('home');
+  };
+
   const handleImageCapture = async (base64Image: string) => {
     if (!user) { setView('login'); return; }
-    if (!user.isPro && usageCount >= FREE_LIMIT) { setView('paywall'); return; }
+    if (!user.isPro && usageCount >= freeLimit) { setView('paywall'); return; }
 
     setIsProcessing(true);
     setView('scanning');
@@ -212,8 +221,8 @@ const App: React.FC = () => {
             switch(view) {
               case 'onboarding': return <Onboarding onComplete={() => { try { localStorage.setItem('kk_onboarding_seen', 'true'); } catch(e){} setView('login'); }} language={language} />;
               case 'login': return <LoginView onLogin={handleLogin} onBack={() => setView('onboarding')} onNavigate={setView} language={language} />;
-              case 'paywall': return <PaywallView language={language} onSubscribe={handleSubscribe} onBack={() => setView('home')} userId={user?.id || ''} />;
-              case 'home': return <Home onCapture={handleImageCapture} filters={filters} onFilterChange={setFilters} language={language} usageCount={usageCount} isPro={user?.isPro || false} />;
+              case 'paywall': return <PaywallView language={language} onSubscribe={handleSubscribe} onBack={() => setView('home')} userId={user?.id || ''} onClaimGift={handleGrantBonus} />;
+              case 'home': return <Home onCapture={handleImageCapture} filters={filters} onFilterChange={setFilters} language={language} usageCount={usageCount} freeLimit={freeLimit} isPro={user?.isPro || false} />;
               case 'scanning': return <ScanningOverlay language={language} />;
               case 'results': return <Results recipes={recipes} ingredients={detectedIngredients} favorites={favorites} onToggleFavorite={(r) => setFavorites(prev => prev.some(f => f.id === r.id) ? prev.filter(f => f.id !== r.id) : [...prev, r])} onRetry={() => setView('home')} isProcessing={isProcessing} onAddToShopping={(items) => { setShoppingItems(prev => [...prev, ...items.map(text => ({ id: Math.random().toString(36).substr(2, 9), text, completed: false }))]); setView('shopping'); }} language={language} />;
               case 'favorites': return <FavoritesView favorites={favorites} onToggleFavorite={(r) => setFavorites(prev => prev.filter(f => f.id !== r.id))} onAddToShopping={(items) => { setShoppingItems(prev => [...prev, ...items.map(text => ({ id: Math.random().toString(36).substr(2, 9), text, completed: false }))]); setView('shopping'); }} language={language} />;
@@ -223,7 +232,7 @@ const App: React.FC = () => {
               case 'privacy': return <PrivacyPolicyView onBack={() => setView('profile')} language={language} />;
               case 'terms': return <TermsView onBack={() => setView('profile')} language={language} />;
               case 'support': return <SupportView onBack={() => setView('profile')} language={language} />;
-              default: return <Home onCapture={handleImageCapture} filters={filters} onFilterChange={setFilters} language={language} usageCount={usageCount} isPro={user?.isPro || false} />;
+              default: return <Home onCapture={handleImageCapture} filters={filters} onFilterChange={setFilters} language={language} usageCount={usageCount} freeLimit={freeLimit} isPro={user?.isPro || false} />;
             }
           } catch(e) {
             console.error("Render error in view:", view, e);

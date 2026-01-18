@@ -70,6 +70,9 @@ export const translations = {
     next: "Next",
     getStarted: "Let's Go!",
     skip: "Skip",
+    giftTitle: "Coming Soon!",
+    giftDesc: "Purchasing Pro is not yet available, but as a thank you for your interest, we've given you 5 extra recipes for free!",
+    claimGift: "Claim 5 extra recipes",
     onboarding: [
       { title: "Scan Your Kitchen", desc: "Snap a photo of your fridge. Our AI identifies ingredients instantly." },
       { title: "Get Smart Recipes", desc: "Discover meals based on what you already have at home." },
@@ -163,6 +166,9 @@ export const translations = {
     next: "Neste",
     getStarted: "Kom i gang!",
     skip: "Hopp over",
+    giftTitle: "Kommer snart!",
+    giftDesc: "Mulighet for kjøp er ikke klar helt ennå, men som takk for at du prøvde gir vi deg 5 ekstra gratis oppskrifter!",
+    claimGift: "Hent 5 ekstra oppskrifter",
     onboarding: [
       { title: "Skann kjøkkenet", desc: "Ta bilde av kjøleskapet. Vår AI gjenkjenner varene dine umiddelbart." },
       { title: "Få smarte forslag", desc: "Oppdag oppskrifter basert på det du faktisk har i skapet." },
@@ -173,7 +179,7 @@ export const translations = {
       privacyUpdate: "Sist oppdatert: Mars 2024",
       privacyText: "KjøkkenKompis AI tar ditt personvern på alvor. Her er en oversikt over hvordan vi behandler dine data:\n\n1. DATALAGRING: Vi lagrer ditt navn og e-post for å kunne tilby en personlig opplevelse og synkronisere dine lagrede oppskrifter og handlelister. Passordet ditt lagres sikkert og kryptert.\n\n2. AI-ANALYSE: Når du tar et bilde av kjøleskapet, sendes dette til Google Gemini for analyse. Bildet lagres ikke permanent hos oss, men analyseres i sanntid for å identifisere ingredienser. Resultatet lagres i din lokale historikk.\n\n3. BETALING: Alle betalinger og abonnementer håndteres via Stripe. KjøkkenKompis har aldri tilgang til dine kortdetaljer.\n\n4. BRUK AV LOKAL LAGRING: Vi bruker LocalStorage i nettleseren din for å holde deg innlogget og lagre dine preferanser. Dette betyr at dataene blir liggende på din telefon/PC til du logger ut eller tømmer nettleserdata.\n\n5. DINE RETTIGHETER: Du kan når som helst be om innsyn i hvilke data vi har lagret om deg, eller be om at din konto og alle tilhørende data slettes permanent.",
       termsTitle: "Brukervilkår",
-      termsText: "Ved å bruke KjøkkenKompis AI godtar du følgende betingelser:\n\n1. BRUK PÅ EGET ANSVAR: Alle oppskrifter, instruksjoner og næringsverdier er generert av kunstig intelligens. Dette er kun forslag. Du er selv ansvarlig for å vurdere matens kvalitet, hygiene og utløpsdatoer.\n\n2. ALLERGIER: Selv om du kan stille inn allergifiltre, kan vi ikke garantere 100% nøyaktighet i AI-genererte tekster. Du må alltid kontrollere ingredienslisten på de fysiske produktene før bruk.\n\n3. ABONNEMENT: Pro-medlemskap gir ubegrenset tilgang til AI-genererte oppskrifter. Abonnementet løper månedlig til det sies opp. Du kan si opp når som helst via profilsiden. Vi refunderer ikke påbegynte måneder.\n\n4. OPPHAVSRETT: Du kan bruke oppskriftene til privat bruk, men det er ikke tillatt å drive kommersiell videreformidling av tjenestens innhold eller forsøke å kopiere appens kildekode.\n\n5. ANSVARSFRASKRIVELSE: KjøkkenKompis er ikke ansvarlig for eventuelle skader, allergiske reaksjoner eller mislykkede måltider som følge av bruk av appen.",
+      termsText: "Ved å bruke KjøkkenKompis AI godtar du følgende betingelser:\n\n1. BRUK PÅ EGET ANSVAR: Alle oppskrifter, instruksjoner og næringsverdier er generert av kunstig intelligens. Dette er kun forslag. Du er selv ansvarlig for å vurdere matens kvalitet, hygiene og utløpsdatoer.\n\n2. ALLERGIER: Selv om du kan stille inn allergifiltre, kan vi ikke garantere 100% nøyaktighet i AI-genererte tekster. Du må alltid kontrollere ingredienslisten på de fysiske produktene før bruk.\n\n3. ABONNEMENT: Pro-medlemskap gir ubegrenset tilgang til AI-genererte oppskrifter. Abonnementet løper månedlig til det sies opp. Du kan si opp når som helst via profilsiden. Vi refunderer ikke påbegynte måneder.\n\n4. OPPHAVSRETT: Du kan bruke oppskriftene til privat bruk, men det er ikke tillatt å drive kommersiell videreformidling av tjenestens innhold eller forsøke å kopiere appens kildekode.\n\n5. ANSVARSFRASKRIVELSE: KjøkkenKompis er ikke ansvarlig for eventuelle skader, allergiske reaksjoner eller mislykkede måltider som gevolg av bruk av appen.",
       supportTitle: "Support",
       supportDesc: "Trenger du hjelp eller har forslag?",
       supportSent: "Melding sendt!",

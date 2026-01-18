@@ -10,10 +10,11 @@ interface HomeProps {
   onFilterChange: (filters: UserFilters) => void;
   language: Language;
   usageCount: number;
+  freeLimit: number;
   isPro: boolean;
 }
 
-const Home: React.FC<HomeProps> = ({ onCapture, filters, onFilterChange, language, usageCount, isPro }) => {
+const Home: React.FC<HomeProps> = ({ onCapture, filters, onFilterChange, language, usageCount, freeLimit, isPro }) => {
   const t = translations[language];
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,17 +60,17 @@ const Home: React.FC<HomeProps> = ({ onCapture, filters, onFilterChange, languag
         {!isPro && (
           <div className="mt-6 flex items-center gap-4 max-w-sm">
             <div className="flex-1 bg-gray-100 h-2 rounded-full overflow-hidden">
-               <div className="bg-emerald-500 h-full transition-all" style={{ width: `${(usageCount / 5) * 100}%` }}></div>
+               <div className="bg-emerald-500 h-full transition-all" style={{ width: `${Math.min(100, (usageCount / freeLimit) * 100)}%` }}></div>
             </div>
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">
-              {t.usageLeft.replace('{count}', Math.max(0, 5 - usageCount).toString())}
+              {t.usageLeft.replace('{count}', Math.max(0, freeLimit - usageCount).toString())}
             </span>
           </div>
         )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
-        {/* Knapp for Kamera - Bruker nå label for bedre mobil-kompatibilitet */}
+        {/* Knapp for Kamera */}
         <label className="flex flex-row items-center justify-start p-6 bg-emerald-50 border-2 border-emerald-100 rounded-[32px] group hover:bg-emerald-100 transition-all hover:shadow-md active:scale-95 cursor-pointer">
           <input 
             type="file" 
@@ -87,7 +88,7 @@ const Home: React.FC<HomeProps> = ({ onCapture, filters, onFilterChange, languag
           </div>
         </label>
 
-        {/* Knapp for Galleri - Bruker nå label */}
+        {/* Knapp for Galleri */}
         <label className="flex flex-row items-center justify-start p-6 bg-blue-50 border-2 border-blue-100 rounded-[32px] group hover:bg-blue-100 transition-all hover:shadow-md active:scale-95 cursor-pointer">
           <input 
             type="file" 
