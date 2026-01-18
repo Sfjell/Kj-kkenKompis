@@ -42,7 +42,6 @@ const App: React.FC = () => {
     minProtein: 20
   });
 
-  // Last lagret tilstand og sjekk betalingsstatus
   useEffect(() => {
     const savedUser = localStorage.getItem('kk_active_user');
     const hasSeenOnboarding = localStorage.getItem('kk_onboarding_seen');
@@ -60,13 +59,9 @@ const App: React.FC = () => {
       setView(hasSeenOnboarding ? 'login' : 'onboarding');
     }
 
-    // Sjekk om vi kommer tilbake fra Stripe
     const paymentStatus = checkPaymentStatus();
     if (paymentStatus === 'success' && activeUser) {
       handleSubscribe();
-      clearPaymentParams();
-      alert(language === 'no' ? 'Velkommen som Pro-medlem! 🎉' : 'Welcome as a Pro member! 🎉');
-    } else if (paymentStatus === 'cancelled') {
       clearPaymentParams();
     }
 
@@ -92,12 +87,6 @@ const App: React.FC = () => {
       localStorage.setItem(`${prefix}history`, JSON.stringify(history));
       localStorage.setItem(`${prefix}shopping`, JSON.stringify(shoppingItems));
       localStorage.setItem(`${prefix}usage`, usageCount.toString());
-      
-      const accounts = JSON.parse(localStorage.getItem('kk_accounts') || '[]');
-      const updatedAccounts = accounts.map((acc: any) => acc.id === user.id ? { ...acc, ...user } : acc);
-      localStorage.setItem('kk_accounts', JSON.stringify(updatedAccounts));
-    } else {
-      localStorage.removeItem('kk_active_user');
     }
   }, [favorites, history, shoppingItems, user, usageCount, language, isLoading]);
 
@@ -129,8 +118,16 @@ const App: React.FC = () => {
 
     setIsProcessing(true);
     setView('scanning');
+    
     try {
       const ingredients = await identifyIngredientsFromImage(base64Image, language);
+      
+      if (ingredients.length === 0) {
+        alert(language === 'no' ? "Beklager, jeg fant ingen matvarer i bildet. Prøv å ta et bilde med bedre lys eller nærmere varene." : "Sorry, I couldn't find any ingredients. Try a clearer photo with better lighting.");
+        setView('home');
+        return;
+      }
+
       setDetectedIngredients(ingredients);
       setHistory(prev => [{
         date: new Date().toLocaleString(language === 'no' ? 'no-NO' : 'en-US'),
@@ -139,11 +136,18 @@ const App: React.FC = () => {
       }, ...prev]);
 
       const suggestedRecipes = await generateRecipes(ingredients, filters, language);
-      setRecipes(suggestedRecipes);
-      setUsageCount(prev => prev + 1);
-      setView('results');
+      
+      if (suggestedRecipes.length === 0) {
+        alert(translations[language].noRecipes);
+        setView('home');
+      } else {
+        setRecipes(suggestedRecipes);
+        setUsageCount(prev => prev + 1);
+        setView('results');
+      }
     } catch (error) {
-      alert(translations[language].noRecipes);
+      console.error("Capture handle error:", error);
+      alert(language === 'no' ? "Noe gikk galt med AI-analysen. Prøv igjen!" : "Something went wrong. Please try again!");
       setView('home');
     } finally {
       setIsProcessing(false);

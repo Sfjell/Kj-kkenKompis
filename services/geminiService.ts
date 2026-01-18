@@ -5,11 +5,41 @@ import { Recipe, UserFilters, Language } from "../types";
 // Initialiserer AI med API-nøkkel fra miljøvariabler
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+/**
+ * Renser AI-output for å sikre at vi bare har ren JSON.
+ */
+function cleanJsonResponse(text: string): string {
+  // Fjerner markdown-blokker og alt som ikke er del av selve JSON-matrisen
+  const jsonStart = text.indexOf('[');
+  const jsonEnd = text.lastIndexOf(']');
+  if (jsonStart !== -1 && jsonEnd !== -1) {
+    return text.substring(jsonStart, jsonEnd + 1);
+  }
+  return text.replace(/```json/g, "").replace(/```/g, "").trim();
+}
+
+/**
+ * Renser ingredienslisten for forklarende tekst fra AI-en.
+ */
+function cleanIngredientList(text: string): string[] {
+  // Noen ganger svarer AI-en "Her er listen: eple, banan". Vi vil bare ha "eple, banan".
+  let cleaned = text;
+  if (cleaned.includes(':')) {
+    cleaned = cleaned.split(':').pop() || cleaned;
+  }
+  
+  return cleaned.split(',')
+    .map(item => item.trim())
+    // Fjerner punktum til slutt og uønsket tekst
+    .map(item => item.replace(/\.$/, ""))
+    .filter(item => item.length > 1 && item.length < 50 && !item.toLowerCase().includes('her er'));
+}
+
 export async function identifyIngredientsFromImage(base64Image: string, language: Language): Promise<string[]> {
   const model = 'gemini-3-flash-preview';
   const systemInstruction = language === 'no'
-    ? "Du er en ekspert på matvarer og bildegjenkjenning. Din oppgave er å identifisere alle spiselige ingredienser i et bilde. Svar KUN med en liste separert med komma. Ikke skriv introduksjoner eller forklaringer."
-    : "You are a food and image recognition expert. Identify all edible ingredients in the image. Respond ONLY with a comma-separated list. No preamble or explanations.";
+    ? "Du er en ekspert på matvarer. Identifiser alle ingredienser i bildet. Svar KUN med en liste separert med komma. Ikke skriv introduksjon eller forklaring. Hvis du ikke ser mat, svar 'EMPTY'."
+    : "Food expert. Identify ingredients. Respond ONLY with a comma-separated list. No preamble. If no food, respond 'EMPTY'.";
 
   try {
     const response = await ai.models.generateContent({
@@ -18,17 +48,17 @@ export async function identifyIngredientsFromImage(base64Image: string, language
         {
           parts: [
             { inlineData: { data: base64Image, mimeType: "image/jpeg" } },
-            { text: language === 'no' ? "Hvilke ingredienser ser du her? Svar med komma-separert liste." : "What ingredients do you see? Respond with a comma-separated list." }
+            { text: "List ingredients." }
           ]
         }
       ],
-      config: {
-        systemInstruction
-      }
+      config: { systemInstruction }
     });
     
-    const text = response.text || "";
-    return text.split(',').map(item => item.trim()).filter(item => item.length > 1);
+    const text = response.text?.trim() || "";
+    if (text.toUpperCase() === 'EMPTY') return [];
+    
+    return cleanIngredientList(text);
   } catch (error) {
     console.error("AI Ingredient Error:", error);
     return [];
@@ -36,28 +66,21 @@ export async function identifyIngredientsFromImage(base64Image: string, language
 }
 
 export async function generateRecipes(ingredients: string[], filters: UserFilters, language: Language): Promise<Recipe[]> {
-  // Bruker Flash for hastighet og bedre JSON-følging i sanntid
   const model = 'gemini-3-flash-preview';
   
   const systemInstruction = language === 'no'
-    ? "Du er en kreativ profesjonell kokk. Din oppgave er å foreslå nøyaktig 3 inspirerende oppskrifter basert på ingrediensene brukeren har tilgjengelig. Du skal returnere en JSON-matrise (array) med oppskriftsobjekter."
-    : "You are a creative professional chef. Your task is to suggest exactly 3 inspiring recipes based on the ingredients provided. You must return a JSON array of recipe objects.";
-
-  const nutritionRequirement = filters.nutritionEnabled 
-    ? (language === 'no' 
-        ? `Hver porsjon MÅ ha maks ${filters.maxCalories} kcal og minst ${filters.minProtein}g protein.` 
-        : `Each serving MUST have a maximum of ${filters.maxCalories} calories and at least ${filters.minProtein}g protein.`)
-    : "";
+    ? "Du er en kreativ kokk. Lag 3 oppskrifter basert på ingrediensene. Du SKAL returnere svaret som en valid JSON-matrise (array). Ikke bruk markdown-formatering i svaret, bare rå JSON."
+    : "Creative chef. Create 3 recipes based on ingredients. You MUST return the response as a valid JSON array. Do not use markdown, only raw JSON.";
 
   const prompt = language === 'no'
-    ? `Ingredienser tilgjengelig: ${ingredients.join(', ')}.
-       Preferanser: Kjøkken: ${filters.cuisine}, Kosthold: ${filters.diet.join(', ') || 'Ingen spesielle'}, Allergier: ${filters.allergies.join(', ') || 'Ingen'}.
-       ${nutritionRequirement}
-       Lag 3 detaljerte oppskrifter på NORSK. Sørg for at 'availableIngredients' kun inneholder ting fra listen over, og 'missingIngredients' er ting man sannsynligvis må kjøpe i tillegg.`
-    : `Available ingredients: ${ingredients.join(', ')}.
-       Preferences: Cuisine: ${filters.cuisine}, Diet: ${filters.diet.join(', ') || 'None'}, Allergies: ${filters.allergies.join(', ') || 'None'}.
-       ${nutritionRequirement}
-       Create 3 detailed recipes in ENGLISH. Ensure 'availableIngredients' only contains items from the list above, and 'missingIngredients' are items the user likely needs to buy.`;
+    ? `Ingredienser: ${ingredients.join(', ')}. 
+       Filtre: Kjøkken: ${filters.cuisine}, Diett: ${filters.diet.join(', ')}, Allergier: ${filters.allergies.join(', ')}.
+       Maks kalorier: ${filters.nutritionEnabled ? filters.maxCalories : 'Ingen grense'}.
+       Lag 3 oppskrifter på NORSK. Vær kreativ med det jeg har!`
+    : `Ingredients: ${ingredients.join(', ')}. 
+       Filters: ${filters.cuisine} cuisine, Diet: ${filters.diet.join(', ')}, Allergies: ${filters.allergies.join(', ')}.
+       Max calories: ${filters.nutritionEnabled ? filters.maxCalories : 'No limit'}.
+       Create 3 recipes in ENGLISH.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -91,10 +114,13 @@ export async function generateRecipes(ingredients: string[], filters: UserFilter
       }
     });
 
-    const results = JSON.parse(response.text || "[]");
+    const text = response.text || "[]";
+    const cleanedText = cleanJsonResponse(text);
+    const results = JSON.parse(cleanedText);
     return Array.isArray(results) ? results : [];
   } catch (error) {
     console.error("AI Recipe Generation Error:", error);
+    // Prøv en gang til uten strenge JSON-krav hvis det feilet (fallback)
     return [];
   }
 }
@@ -104,11 +130,9 @@ export async function generateRecipeImage(prompt: string): Promise<string> {
   try {
     const response = await ai.models.generateContent({
       model,
-      contents: { parts: [{ text: `Professional food photography, top-down view, studio lighting, delicious: ${prompt}` }] },
+      contents: { parts: [{ text: `Gourmet food photography, plate, delicious: ${prompt}` }] },
       config: { 
-        imageConfig: { 
-          aspectRatio: "16:9" 
-        } 
+        imageConfig: { aspectRatio: "16:9" } 
       }
     });
     
