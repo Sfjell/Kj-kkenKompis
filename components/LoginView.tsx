@@ -24,6 +24,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onBack, onNavigate, lang
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [activeLegalModal, setActiveLegalModal] = useState<'terms' | 'privacy' | null>(null);
 
   const t = translations[language];
 
@@ -61,9 +62,13 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onBack, onNavigate, lang
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanEmail}`
       };
 
-      localStorage.setItem('kk_accounts', JSON.stringify([...accounts, newUser]));
-      setSuccess(language === 'no' ? 'Konto opprettet!' : 'Account created!');
-      setTimeout(() => onLogin(newUser), 1000);
+      try {
+        localStorage.setItem('kk_accounts', JSON.stringify([...accounts, newUser]));
+        setSuccess(language === 'no' ? 'Konto opprettet!' : 'Account created!');
+        setTimeout(() => onLogin(newUser), 1000);
+      } catch (e) {
+        setError(language === 'no' ? 'Kunne ikke lagre konto. Minnet er fullt.' : 'Storage full. Could not create account.');
+      }
     } else {
       const user = accounts.find(acc => acc.email === cleanEmail && acc.password === password);
       if (user) {
@@ -77,8 +82,45 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onBack, onNavigate, lang
     }
   };
 
+  // Enkel modal for å vise juridisk tekst
+  const LegalModal = () => {
+    if (!activeLegalModal) return null;
+    const content = activeLegalModal === 'terms' ? t.legal.termsText : t.legal.privacyText;
+    const title = activeLegalModal === 'terms' ? t.legal.termsTitle : t.legal.privacyTitle;
+
+    return (
+      <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
+        <div className="bg-white w-full max-w-sm rounded-[32px] overflow-hidden shadow-2xl flex flex-col max-h-[70vh]">
+          <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+            <h3 className="font-black text-gray-900">{title}</h3>
+            <button onClick={() => setActiveLegalModal(null)} className="text-gray-400 hover:text-gray-600">
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div className="p-8 overflow-y-auto flex-1 text-gray-600 font-medium leading-relaxed text-sm">
+            {content}
+          </div>
+          <div className="p-4 bg-gray-50 text-center">
+            <button 
+              onClick={() => {
+                if (activeLegalModal === 'terms') setAgreedTerms(true);
+                else setAgreedPrivacy(true);
+                setActiveLegalModal(null);
+              }}
+              className="w-full py-3 bg-emerald-500 text-white rounded-2xl font-black text-sm"
+            >
+              {language === 'no' ? 'Jeg har lest og forstått' : 'I have read and understood'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="px-8 py-12 flex flex-col min-h-full bg-white max-w-md mx-auto animate-fade-in">
+      <LegalModal />
+      
       <div className="mb-10 text-center pt-8">
         <div className="w-20 h-20 bg-emerald-50 rounded-[32px] flex items-center justify-center mx-auto mb-6 text-emerald-500 shadow-inner">
           <i className="fa-solid fa-cookie-bite text-3xl"></i>
@@ -133,20 +175,35 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onBack, onNavigate, lang
 
         {isRegistering && (
           <div className="py-4 space-y-3">
-            <label className="flex items-center gap-3 cursor-pointer group">
-              <input type="checkbox" className="hidden" checked={agreedTerms} onChange={() => setAgreedTerms(!agreedTerms)} />
-              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${agreedTerms ? 'bg-emerald-500 border-emerald-500' : 'border-gray-200 group-hover:border-emerald-200'}`}>
-                {agreedTerms && <i className="fa-solid fa-check text-white text-[10px]"></i>}
-              </div>
-              <span className="text-xs font-bold text-gray-500">{t.acceptTerms}</span>
-            </label>
-            <label className="flex items-center gap-3 cursor-pointer group">
-              <input type="checkbox" className="hidden" checked={agreedPrivacy} onChange={() => setAgreedPrivacy(!agreedPrivacy)} />
-              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${agreedPrivacy ? 'bg-emerald-500 border-emerald-500' : 'border-gray-200 group-hover:border-emerald-200'}`}>
-                {agreedPrivacy && <i className="fa-solid fa-check text-white text-[10px]"></i>}
-              </div>
-              <span className="text-xs font-bold text-gray-500">{t.acceptPrivacy}</span>
-            </label>
+            <div className="flex items-center gap-3">
+              <label className="cursor-pointer group flex items-center gap-3">
+                <input type="checkbox" className="hidden" checked={agreedTerms} onChange={() => setAgreedTerms(!agreedTerms)} />
+                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${agreedTerms ? 'bg-emerald-500 border-emerald-500' : 'border-gray-200 group-hover:border-emerald-200'}`}>
+                  {agreedTerms && <i className="fa-solid fa-check text-white text-[10px]"></i>}
+                </div>
+              </label>
+              <span className="text-xs font-bold text-gray-500">
+                {language === 'no' ? 'Jeg godtar' : 'I accept'}{' '}
+                <button type="button" onClick={() => setActiveLegalModal('terms')} className="text-emerald-600 underline decoration-emerald-200 font-black">
+                  {language === 'no' ? 'vilkårene' : 'the terms'}
+                </button>
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <label className="cursor-pointer group flex items-center gap-3">
+                <input type="checkbox" className="hidden" checked={agreedPrivacy} onChange={() => setAgreedPrivacy(!agreedPrivacy)} />
+                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${agreedPrivacy ? 'bg-emerald-500 border-emerald-500' : 'border-gray-200 group-hover:border-emerald-200'}`}>
+                  {agreedPrivacy && <i className="fa-solid fa-check text-white text-[10px]"></i>}
+                </div>
+              </label>
+              <span className="text-xs font-bold text-gray-500">
+                {language === 'no' ? 'Jeg godtar' : 'I accept'}{' '}
+                <button type="button" onClick={() => setActiveLegalModal('privacy')} className="text-emerald-600 underline decoration-emerald-200 font-black">
+                  {language === 'no' ? 'personvernerklæringen' : 'the privacy policy'}
+                </button>
+              </span>
+            </div>
           </div>
         )}
 
@@ -158,6 +215,12 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onBack, onNavigate, lang
                 {language === 'no' ? 'Lag konto her' : 'Create account here'}
               </button>
             )}
+          </div>
+        )}
+
+        {success && (
+          <div className="bg-emerald-50 text-emerald-600 p-4 rounded-xl text-xs font-bold text-center border border-emerald-100">
+             <i className="fa-solid fa-circle-check mr-2"></i> {success}
           </div>
         )}
 
@@ -181,7 +244,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onBack, onNavigate, lang
       </div>
       
       <div className="mt-auto pt-10 text-center text-[9px] text-gray-300 uppercase tracking-widest font-black">
-        KitchenBuddy v1.2 Build Final
+        KitchenBuddy v1.3 Build Final
       </div>
     </div>
   );

@@ -1,8 +1,8 @@
 
 {
-  "name": "KjøkkenKompis AI",
-  "short_name": "Kompis",
-  "description": "Din AI-kokk i lomma",
+  "name": "KjøkkenKompis AI - Din smarte kokk",
+  "short_name": "KjøkkenKompis",
+  "description": "Skann kjøleskapet og få oppskrifter umiddelbart med AI.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -11,12 +11,14 @@
     {
       "src": "https://cdn-icons-png.flaticon.com/512/3595/3595455.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "https://cdn-icons-png.flaticon.com/512/3595/3595455.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

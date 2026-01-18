@@ -19,6 +19,26 @@ const RecipeModal: React.FC<RecipeModalProps> = ({ recipe, onClose, onAddToShopp
     onClose();
   };
 
+  const handleShare = async () => {
+    const shareData = {
+      title: `Oppskrift: ${recipe.name}`,
+      text: `Sjekk ut denne deilige oppskriften på ${recipe.name} jeg fant med KjøkkenKompis AI!`,
+      url: window.location.href
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: Kopier til utklippstavle
+        await navigator.clipboard.writeText(`${shareData.text}\n\n${shareData.url}`);
+        alert(language === 'no' ? "Link kopiert til utklippstavlen!" : "Link copied to clipboard!");
+      }
+    } catch (err) {
+      console.log('Error sharing:', err);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-6 md:p-12 overflow-hidden">
       {/* Backdrop click to close */}
@@ -34,12 +54,20 @@ const RecipeModal: React.FC<RecipeModalProps> = ({ recipe, onClose, onAddToShopp
               alt={recipe.name}
               className="w-full h-full object-cover"
             />
-            <button 
-              onClick={onClose}
-              className="absolute top-6 left-6 w-12 h-12 bg-white/90 backdrop-blur rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all z-10 hover:bg-white"
-            >
-              <i className="fa-solid fa-xmark text-gray-800 text-xl"></i>
-            </button>
+            <div className="absolute top-6 left-6 flex gap-2 z-10">
+              <button 
+                onClick={onClose}
+                className="w-12 h-12 bg-white/90 backdrop-blur rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all hover:bg-white"
+              >
+                <i className="fa-solid fa-xmark text-gray-800 text-xl"></i>
+              </button>
+              <button 
+                onClick={handleShare}
+                className="w-12 h-12 bg-white/90 backdrop-blur rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all hover:bg-white text-emerald-600"
+              >
+                <i className="fa-solid fa-share-nodes text-xl"></i>
+              </button>
+            </div>
             <div className="absolute bottom-6 left-6 right-6 hidden md:block">
                <div className="bg-white/90 backdrop-blur p-6 rounded-3xl shadow-xl border border-white/20">
                   <h3 className="text-xl font-black text-gray-900 mb-2">{recipe.name}</h3>
