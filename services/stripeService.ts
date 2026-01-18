@@ -14,12 +14,11 @@ export const initiateStripeCheckout = (userId: string) => {
   // client_reference_id lar deg se i Stripe-dashboardet hvilken bruker som har betalt.
   const checkoutUrl = `${STRIPE_PAYMENT_LINK}?client_reference_id=${userId}&success_url=${window.location.origin}?payment=success&cancel_url=${window.location.origin}?payment=cancelled`;
   
-  // For en ekte omdirigering i produksjon, fjern kommentaren under:
-  // window.location.href = checkoutUrl;
+  // Nå aktiverer vi omdirigeringen for produksjon:
+  window.location.href = checkoutUrl;
   
-  // Simulering for test-formål:
-  console.log("Redirecting to Stripe:", checkoutUrl);
   return new Promise((resolve) => {
+    // Denne blir bare brukt som fallback hvis noe stopper omdirigeringen
     setTimeout(() => {
       resolve(true);
     }, 1500);
