@@ -4,7 +4,7 @@ import { Language } from '../types';
 import { translations } from '../translations';
 
 interface HistoryViewProps {
-  history: { date: string; image: string; ingredients: string[] }[];
+  history: { date: string; image?: string; ingredients: string[] }[];
   language: Language;
 }
 
@@ -23,22 +23,17 @@ const HistoryView: React.FC<HistoryViewProps> = ({ history, language }) => {
           <p className="text-gray-400 font-black uppercase tracking-widest text-xs">{t.noScans}</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {history.map((item, idx) => (
-            <div key={idx} className="bg-white rounded-3xl p-4 flex gap-4 items-center border border-gray-100 shadow-sm">
-              <img 
-                src={`data:image/jpeg;base64,${item.image}`} 
-                className="w-20 h-20 rounded-2xl object-cover"
-                alt="Scan"
-              />
+            <div key={idx} className="bg-white rounded-3xl p-5 flex gap-4 items-center border border-gray-100 shadow-sm">
+              <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-500 text-xl">
+                <i className="fa-solid fa-clock-rotate-left"></i>
+              </div>
               <div className="flex-1 overflow-hidden">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{item.date}</p>
-                <h4 className="font-black text-gray-800 mb-1">{item.ingredients.length} {t.ingredientsFound}</h4>
-                <p className="text-sm text-gray-500 truncate font-bold">{item.ingredients.join(', ')}</p>
+                <h4 className="font-black text-gray-800 mb-1">{item.ingredients?.length || 0} {t.ingredientsFound}</h4>
+                <p className="text-xs text-gray-500 truncate font-bold">{item.ingredients?.join(', ')}</p>
               </div>
-              <button className="p-2 text-emerald-500">
-                <i className="fa-solid fa-chevron-right"></i>
-              </button>
             </div>
           ))}
         </div>
