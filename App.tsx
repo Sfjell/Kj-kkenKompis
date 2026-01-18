@@ -43,37 +43,42 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    try {
-      const savedUser = localStorage.getItem('kk_active_user');
-      const hasSeenOnboarding = localStorage.getItem('kk_onboarding_seen');
-      const savedLang = localStorage.getItem('kk_lang');
+    const initApp = () => {
+      try {
+        const savedUser = localStorage.getItem('kk_active_user');
+        const hasSeenOnboarding = localStorage.getItem('kk_onboarding_seen');
+        const savedLang = localStorage.getItem('kk_lang');
 
-      if (savedLang) setLanguage(savedLang as Language);
-      
-      let activeUser: User | null = null;
-      if (savedUser) {
-        try {
-          activeUser = JSON.parse(savedUser);
-          setUser(activeUser);
-          loadUserData(activeUser!.id);
-          setView('home');
-        } catch(e) {
-          localStorage.removeItem('kk_active_user');
+        if (savedLang) setLanguage(savedLang as Language);
+        
+        if (savedUser) {
+          try {
+            const activeUser = JSON.parse(savedUser);
+            setUser(activeUser);
+            loadUserData(activeUser.id);
+            setView('home');
+          } catch(e) {
+            console.error("Failed to parse saved user", e);
+            localStorage.removeItem('kk_active_user');
+            setView(hasSeenOnboarding ? 'login' : 'onboarding');
+          }
+        } else {
+          setView(hasSeenOnboarding ? 'login' : 'onboarding');
         }
-      } else {
-        setView(hasSeenOnboarding ? 'login' : 'onboarding');
-      }
 
-      const paymentStatus = checkPaymentStatus();
-      if (paymentStatus === 'success' && activeUser) {
-        handleSubscribe();
-        clearPaymentParams();
+        const paymentStatus = checkPaymentStatus();
+        if (paymentStatus === 'success' && savedUser) {
+          handleSubscribe();
+          clearPaymentParams();
+        }
+      } catch (e) {
+        console.warn("Initial load failed", e);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (e) {
-      console.warn("Could not access localStorage on startup", e);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+
+    initApp();
   }, []);
 
   const loadUserData = (userId: string) => {
@@ -89,22 +94,22 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    if (isLoading || !user) return;
+    if (isLoading) return;
     
     try {
-      const prefix = `kk_data_${user.id}_`;
       localStorage.setItem('kk_lang', language);
-      localStorage.setItem('kk_active_user', JSON.stringify(user));
-      localStorage.setItem(`${prefix}favorites`, JSON.stringify(favorites));
-      localStorage.setItem(`${prefix}history`, JSON.stringify(history));
-      localStorage.setItem(`${prefix}shopping`, JSON.stringify(shoppingItems));
-      localStorage.setItem(`${prefix}usage`, usageCount.toString());
-    } catch (e) {
-      console.warn("LocalStorage storage failed. This often happens if history is too large.", e);
-      // Hvis vi går tom for plass, tøm historikken for å redde appen
-      if (e.name === 'QuotaExceededError') {
-        setHistory([]);
+      if (user) {
+        const prefix = `kk_data_${user.id}_`;
+        localStorage.setItem('kk_active_user', JSON.stringify(user));
+        localStorage.setItem(`${prefix}favorites`, JSON.stringify(favorites));
+        localStorage.setItem(`${prefix}history`, JSON.stringify(history));
+        localStorage.setItem(`${prefix}shopping`, JSON.stringify(shoppingItems));
+        localStorage.setItem(`${prefix}usage`, usageCount.toString());
+      } else {
+        localStorage.removeItem('kk_active_user');
       }
+    } catch (e) {
+      console.warn("Storage update failed", e);
     }
   }, [favorites, history, shoppingItems, user, usageCount, language, isLoading]);
 
@@ -115,6 +120,7 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('kk_active_user');
     setUser(null);
     setFavorites([]);
     setHistory([]);
@@ -125,7 +131,9 @@ const App: React.FC = () => {
 
   const handleSubscribe = () => {
     if (user) {
-      setUser({ ...user, isPro: true });
+      const updatedUser = { ...user, isPro: true };
+      setUser(updatedUser);
+      localStorage.setItem('kk_active_user', JSON.stringify(updatedUser));
     }
     setView('home');
   };
@@ -147,12 +155,10 @@ const App: React.FC = () => {
       }
 
       setDetectedIngredients(ingredients);
-      
-      // Vi lagrer IKKE selve bildet (base64Image) lenger for å spare plass på mobil
       setHistory(prev => [{
         date: new Date().toLocaleString(language === 'no' ? 'no-NO' : 'en-US'),
         ingredients: ingredients
-      }, ...prev].slice(0, 20)); // Behold bare de 20 siste for å spare minne
+      }, ...prev].slice(0, 20));
 
       const suggestedRecipes = await generateRecipes(ingredients, filters, language);
       
