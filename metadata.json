@@ -1,0 +1,7 @@
+{
+  "name": "KjøkkenKompis AI",
+  "description": "Bruk AI for å se hva du har i kjøleskapet og få oppskrifter umiddelbart.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

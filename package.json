@@ -1,0 +1,21 @@
+
+{
+  "name": "kjokkenkompis-ai",
+  "version": "1.0.0",
+  "description": "AI-drevet matlagingsassistent for web",
+  "main": "index.js",
+  "scripts": {
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@google/genai": "^1.37.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0"
+  }
+}
