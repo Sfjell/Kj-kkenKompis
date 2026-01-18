@@ -7,46 +7,64 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export async function identifyIngredientsFromImage(base64Image: string, language: Language): Promise<string[]> {
   const model = 'gemini-3-flash-preview';
-  const instruction = language === 'no' 
-    ? "Identifiser alle matvare-ingredienser i dette bildet. Svar med en kommaseparert liste på norsk. Vær spesifikk og nøyaktig."
-    : "Identify all food ingredients in this image. Answer with a comma separated list in English. Be specific and accurate.";
+  const systemInstruction = language === 'no'
+    ? "Du er en ekspert på matvarer og bildegjenkjenning. Din oppgave er å identifisere alle spiselige ingredienser i et bilde. Svar KUN med en liste separert med komma. Ikke skriv introduksjoner eller forklaringer."
+    : "You are a food and image recognition expert. Identify all edible ingredients in the image. Respond ONLY with a comma-separated list. No preamble or explanations.";
 
   try {
     const response = await ai.models.generateContent({
       model,
-      contents: {
-        parts: [
-          { inlineData: { data: base64Image, mimeType: "image/jpeg" } },
-          { text: instruction }
-        ]
+      contents: [
+        {
+          parts: [
+            { inlineData: { data: base64Image, mimeType: "image/jpeg" } },
+            { text: language === 'no' ? "Hvilke ingredienser ser du her? Svar med komma-separert liste." : "What ingredients do you see? Respond with a comma-separated list." }
+          ]
+        }
+      ],
+      config: {
+        systemInstruction
       }
     });
-    return (response.text || "").split(',').map(item => item.trim()).filter(Boolean);
+    
+    const text = response.text || "";
+    return text.split(',').map(item => item.trim()).filter(item => item.length > 1);
   } catch (error) {
-    console.error("AI Error:", error);
-    throw error;
+    console.error("AI Ingredient Error:", error);
+    return [];
   }
 }
 
 export async function generateRecipes(ingredients: string[], filters: UserFilters, language: Language): Promise<Recipe[]> {
-  const model = 'gemini-3-pro-preview'; // Oppgradert til Pro for bedre logikk på PC/iPad
-  const nutritionPrompt = filters.nutritionEnabled ? (language === 'no' 
-    ? `MÅ være under ${filters.maxCalories} kcal og over ${filters.minProtein}g protein per porsjon.` 
-    : `MUST be under ${filters.maxCalories} kcal and over ${filters.minProtein}g protein per serving.`) : "";
+  // Bruker Flash for hastighet og bedre JSON-følging i sanntid
+  const model = 'gemini-3-flash-preview';
   
-  const prompt = language === 'no' 
-    ? `Du er en profesjonell kokk. Brukeren har: ${ingredients.join(', ')}. Foreslå 3 kreative oppskrifter på NORSK. 
-       Kjøkkentype: ${filters.cuisine}. Kosthold: ${filters.diet.join(', ')}. Allergier som må unngås: ${filters.allergies.join(', ')}. 
-       ${nutritionPrompt} Returner resultatet som et JSON-objekt.`
-    : `You are a professional chef. User has: ${ingredients.join(', ')}. Suggest 3 creative recipes in ENGLISH. 
-       Cuisine: ${filters.cuisine}. Diet: ${filters.diet.join(', ')}. Allergies to avoid: ${filters.allergies.join(', ')}. 
-       ${nutritionPrompt} Return as a JSON object.`;
+  const systemInstruction = language === 'no'
+    ? "Du er en kreativ profesjonell kokk. Din oppgave er å foreslå nøyaktig 3 inspirerende oppskrifter basert på ingrediensene brukeren har tilgjengelig. Du skal returnere en JSON-matrise (array) med oppskriftsobjekter."
+    : "You are a creative professional chef. Your task is to suggest exactly 3 inspiring recipes based on the ingredients provided. You must return a JSON array of recipe objects.";
+
+  const nutritionRequirement = filters.nutritionEnabled 
+    ? (language === 'no' 
+        ? `Hver porsjon MÅ ha maks ${filters.maxCalories} kcal og minst ${filters.minProtein}g protein.` 
+        : `Each serving MUST have a maximum of ${filters.maxCalories} calories and at least ${filters.minProtein}g protein.`)
+    : "";
+
+  const prompt = language === 'no'
+    ? `Ingredienser tilgjengelig: ${ingredients.join(', ')}.
+       Preferanser: Kjøkken: ${filters.cuisine}, Kosthold: ${filters.diet.join(', ') || 'Ingen spesielle'}, Allergier: ${filters.allergies.join(', ') || 'Ingen'}.
+       ${nutritionRequirement}
+       Lag 3 detaljerte oppskrifter på NORSK. Sørg for at 'availableIngredients' kun inneholder ting fra listen over, og 'missingIngredients' er ting man sannsynligvis må kjøpe i tillegg.`
+    : `Available ingredients: ${ingredients.join(', ')}.
+       Preferences: Cuisine: ${filters.cuisine}, Diet: ${filters.diet.join(', ') || 'None'}, Allergies: ${filters.allergies.join(', ') || 'None'}.
+       ${nutritionRequirement}
+       Create 3 detailed recipes in ENGLISH. Ensure 'availableIngredients' only contains items from the list above, and 'missingIngredients' are items the user likely needs to buy.`;
 
   try {
     const response = await ai.models.generateContent({
       model,
       contents: prompt,
       config: {
+        systemInstruction,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.ARRAY,
@@ -67,14 +85,16 @@ export async function generateRecipes(ingredients: string[], filters: UserFilter
               protein: { type: Type.NUMBER },
               imagePrompt: { type: Type.STRING }
             },
-            required: ["id", "name", "description", "prepTime", "difficulty", "availableIngredients", "missingIngredients", "instructions", "shoppingList", "calories", "protein", "imagePrompt"]
+            required: ["id", "name", "description", "prepTime", "difficulty", "cuisine", "availableIngredients", "missingIngredients", "instructions", "shoppingList", "calories", "protein", "imagePrompt"]
           }
         }
       }
     });
-    return JSON.parse(response.text || "[]");
+
+    const results = JSON.parse(response.text || "[]");
+    return Array.isArray(results) ? results : [];
   } catch (error) {
-    console.error("Generation Error:", error);
+    console.error("AI Recipe Generation Error:", error);
     return [];
   }
 }
@@ -84,16 +104,20 @@ export async function generateRecipeImage(prompt: string): Promise<string> {
   try {
     const response = await ai.models.generateContent({
       model,
-      contents: { parts: [{ text: `High-end professional food photography, minimalist style, bright lighting, appetizing: ${prompt}` }] },
-      config: { imageConfig: { aspectRatio: "16:9" } }
-    });
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        return `data:image/png;base64,${part.inlineData.data}`;
+      contents: { parts: [{ text: `Professional food photography, top-down view, studio lighting, delicious: ${prompt}` }] },
+      config: { 
+        imageConfig: { 
+          aspectRatio: "16:9" 
+        } 
       }
+    });
+    
+    const imagePart = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
+    if (imagePart?.inlineData) {
+      return `data:image/png;base64,${imagePart.inlineData.data}`;
     }
   } catch (e) {
-    console.error("Image gen error:", e);
+    console.error("AI Image Generation Error:", e);
   }
   return "";
 }
